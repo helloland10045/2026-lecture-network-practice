@@ -1,0 +1,10 @@
+
+  1000 queries over 60 simulated minutes, 20 ms per upstream round trip
+
+  baseline   upstream   325   hit rate  67.5%   stale  266   sim time    6.5s
+  yours      upstream   275   hit rate  72.5%   stale    0   sim time    5.5s
+
+  0 stale, upstream +15% vs baseline  ->  good
+  For 'strong': in observation.md, work out the smallest number of
+  upstream queries any correct cache could make here, and why.
+

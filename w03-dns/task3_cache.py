@@ -74,10 +74,22 @@ class YourCache:
 
     def __init__(self, upstream):
         self.upstream = upstream
-        raise NotImplementedError("write your cache")
+        self.entries = {}         # name -> (address, expires_at)  (O(1) lookup)
+        self.hits = 0
+        self.misses = 0
 
     def lookup(self, name, now):
-        raise NotImplementedError("write your cache")
+        entry = self.entries.get(name)
+        # Serve only while the record's OWN ttl has not run out.
+        if entry is not None and now < entry[1]:
+            self.hits += 1
+            return entry[0]
+        # Missing or expired: this is the only time we go upstream.
+        address, ttl = self.upstream(name)
+        self.entries[name] = (address, now + ttl)
+        self.misses += 1
+        return address
 
     def stats(self):
-        return {}
+        return {"entries": len(self.entries),
+                "hits": self.hits, "misses": self.misses}
