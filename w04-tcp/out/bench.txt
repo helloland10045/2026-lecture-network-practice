@@ -1,0 +1,15 @@
+
+  link 1 pkt/slot, RTT 20 slots, queue 10, 4000 slots
+
+  baseline   goodput  986.8/1000 slots   loss  37.4%   retx  2340   avg queue   8.8
+  yours      goodput  965.5/1000 slots   loss   1.4%   retx    55   avg queue   4.4
+
+   ok    loss at most 5%
+   ok    average queue at most 5.0
+   goodput 98% of the baseline
+
+   -> strong
+
+  Note that the baseline still has the highest goodput here.
+  observation.md: why is it the worst sender anyway?
+

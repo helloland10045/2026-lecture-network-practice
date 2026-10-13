@@ -51,14 +51,56 @@ class YourControl:
       correctness. §3.7 is the argument about where between those to sit.
     * You are allowed to grow differently before and after your first loss.
       That distinction has a name in the textbook.
+
+    Design (all inferred from ACK / loss events; no peeking at the link):
+
+    1. Slow start: +1 per ACK (window doubles every round trip) until the
+       first loss.
+    2. Measure, don't guess: during a loss episode every lost packet shrinks
+       the window by one and is not replaced (packet conservation). When a
+       full window of ACKs arrives with no new loss, the window that is left
+       is the number of packets the network actually held = pipe + queue
+       (here it settles at 29-30 = 20 in the pipe + 10 in the queue).
+    3. Converge to the pipe, not to the drop point: cut that measured value
+       to BETA of it. 0.6 x ~30 = ~18, just under the ~20-packet pipe, so
+       the queue drains instead of staying full.
+    4. Probe gently: +AI packets per round trip (AI/window per ACK). Slow
+       probing means the next loss episode comes rarely.
+    5. A timeout fires 3 round trips after the send, so a loss reported in
+       the 3 windows of ACKs after a cut belongs to the window before the
+       cut. Those are ignored instead of cutting a second time.
     """
 
+    BETA = 0.6          # fraction of measured (pipe + queue) to keep
+    AI = 0.25           # packets added per round trip after the first loss
+    QUIET_RTTS = 3      # = bench TIMEOUT / RTT
+
     def __init__(self):
-        self.window = 1
-        raise NotImplementedError("write your congestion control")
+        self.window = 1.0
+        self.slow_start = True
+        self.recovering = False     # inside a loss episode, deflating
+        self.clean_acks = 0         # ACKs since the last loss in this episode
+        self.quiet = 0              # ACKs left during which losses are stale
 
     def on_ack(self):
-        raise NotImplementedError
+        if self.quiet:
+            self.quiet -= 1
+        if self.recovering:
+            self.clean_acks += 1
+            if self.clean_acks >= self.window:      # a full clean window
+                self.recovering = False
+                self.window = max(2.0, self.window * self.BETA)
+                self.quiet = int(self.QUIET_RTTS * self.window)
+            return                                   # no growth while measuring
+        if self.slow_start:
+            self.window += 1
+        else:
+            self.window += self.AI / self.window
 
     def on_loss(self):
-        raise NotImplementedError
+        if self.quiet:
+            return                                   # stale: sent before the cut
+        self.slow_start = False
+        self.recovering = True
+        self.clean_acks = 0
+        self.window = max(1.0, self.window - 1)      # do not replace the lost one
