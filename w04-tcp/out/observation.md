@@ -8,11 +8,9 @@
 
 ## Task 2 · 내 링크 측정 (두 번)
 
-<!-- TODO(지훈): 아래 세 줄은 직접 측정한 뒤 채울 것. 숫자는 out/throughput.json 과 Wireshark 에서. -->
-
-- **[측정 후 작성]** 연결 하나의 SYN / SYN-ACK / ACK 패킷 번호, 양쪽 ISN(`tcp.seq_raw`)과 0이 아닌 이유(예측 가능한 번호는 위조·이전 연결 패킷 혼입을 허용함).
-- **[측정 후 작성]** SYN 옵션(MSS, window scale, SACK permitted), 스케일 적용 후 광고 window와 실제 in-flight 바이트 비교 — 수신 window가 아니라 무엇이 한계였는지.
-- **[측정 후 작성]** 두 네트워크의 throughput 중앙값·spread·handshake 중앙값, spread의 원인, 그리고 handshake(RTT)가 throughput을 깎는 §3.7 메커니즘(window/RTT, slow start가 RTT 단위로 커짐).
+- 캡처(`out/tcp.pcapng`, 캡처 필터 `tcp port 443 and host speed.cloudflare.com`, 연결 1개 4,561 패킷)에서 **#1 SYN, #2 SYN-ACK, #3 ACK**(192.168.0.33:64272 ↔ 162.159.140.220:443)다. 초기 순서 번호(raw)는 내 쪽 **3,709,406,179**, 서버 쪽 **2,461,242,374**로 0도 아니고 서로 무관하다(Wireshark가 보여주는 0은 상대 번호일 뿐). 연결마다 무작위로 고르는 이유는 같은 주소·포트 쌍을 쓰던 이전 연결의 늦은 세그먼트가 새 연결의 번호 공간에 끼어들지 않게 하고, 경로 밖 공격자가 번호를 맞혀 RST·데이터를 주입하지 못하게 하려는 것이다. SYN → SYN-ACK는 17.2 ms였다.
+- SYN 옵션: 내 쪽 MSS 1460, window scale shift 10(×1024), SACK permitted(+ timestamp), 서버 쪽 MSS 1400, shift 13(×8192), SACK permitted. 스케일을 적용한 내 광고 window는 첫 ACK에서 63×1024 = **64,512 B**였고 전송 중 자동 조정으로 중앙값 **약 817 KB**, 최대 **1.40 MB**까지 커졌다. 반면 실제 in-flight(받은 최고 순서 번호 − 내가 보낸 마지막 ACK)는 중앙값 **약 47.8 KB**이고, 이는 이 전송의 속도×RTT(24.1 Mbps × 17.2 ms ≈ 51.8 KB)와 거의 같다. 수신 window는 실제로 쓰인 양의 15배 이상 비어 있었으므로 한계는 수신자가 아니라 **경로(병목 속도 × RTT)와 송신자의 혼잡 window**다. 재전송은 0개였다. 이 캡처 전송은 24.1 Mbps로 측정 실행(중앙값 65 Mbps)보다 느렸는데, 시점이 다르다는 것 말고 원인은 확인하지 못했다.
+- <!-- TODO(지훈): 테더링 측정 후 채울 것 --> **[테더링 측정 후 작성]** campus wifi는 중앙값 **65.22 Mbps**(54.70~70.20, spread 24%), handshake 중앙값 **13.8 ms**(7.3~57.1 ms). 테더링 숫자, spread의 원인, handshake(RTT)가 throughput을 깎는 §3.7 메커니즘을 여기에.
 
 ## Task 3 · 고정 window 이기기
 
